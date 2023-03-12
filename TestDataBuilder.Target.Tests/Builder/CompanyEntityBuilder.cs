@@ -1,6 +1,7 @@
-﻿using Bogus;
-using Bogus.Extensions.Brazil;
+﻿using Bogus.Extensions.Brazil;
+using Bogus.Extensions.Italy;
 using TestDataBuilder.Target.Entities;
+using TestDataBuilder.Target.Tests.Helpers;
 
 namespace TestDataBuilder.Target.Tests.Builder;
 
@@ -22,7 +23,18 @@ public class CompanyEntityBuilder : TestDataBuilder<CompanyEntity, CompanyEntity
 
     #endregion
 
-    public CompanyEntityBuilder(string locale) : base(locale) { }
+    #region Flags
+
+    private CountryOfPerson _countryOfPerson = CountryOfPerson.OTHER;
+
+    private bool _uniqueFiscalCode = false;
+
+    #endregion
+
+    public CompanyEntityBuilder(AbstractBogusLocale locale) : base(locale)
+    {
+        _employeeEntityBuilder = new EmployeeEntityBuilder(Locale);
+    }
 
     public CompanyEntityBuilder WithRandomCorportateName()
     {
@@ -42,9 +54,56 @@ public class CompanyEntityBuilder : TestDataBuilder<CompanyEntity, CompanyEntity
         return this;
     }
 
-    public CompanyEntityBuilder WithRandolastUpdate()
+    public CompanyEntityBuilder WithRandonLastUpdate()
     {
-        _lastUpdate = Faker.Date.Soon();
+        _lastUpdate = Faker.Date.Past();
+        return this;
+    }
+
+    public CompanyEntityBuilder WithUniqueFiscalCodes()
+    {
+        _uniqueFiscalCode = true;
+        return this;
+    }
+
+    public CompanyEntityBuilder WithAllRandom()
+    {
+        _corporateName = Faker.Company.CompanyName();
+        _fancyName = Faker.Company.CompanyName();
+        _fiscalCodeNumber = GenNumber();
+
+        _employees = _employeeEntityBuilder
+            .WithAllRandom()
+            .Build(Faker.Random.Int(0, 42))
+            .ToList();
+
+        return this;
+
+        string GenNumber()
+        {
+            switch (Locale)
+            {
+                case BrazilianBogusLocale:
+                    _countryOfPerson = CountryOfPerson.BRAZIL;
+                    return Faker.Company.Cnpj();
+                case ItalianBogusLocale:
+                    _countryOfPerson = CountryOfPerson.ITALY;
+                    return Faker.Company.ItalianIVA();
+                default:
+                    throw new NotImplementedException("Plase, add a new type of locale here.");
+            }
+        }
+    }
+
+    public CompanyEntityBuilder With(EmployeeEntityBuilder builder)
+    {
+        if (ButHasBeenFlaged)
+        {
+            _employees.Clear();
+            ButHasBeenFlaged = false;   
+        }
+
+        _employees.Add(builder.Build());
         return this;
     }
 
@@ -75,17 +134,15 @@ public class CompanyEntityBuilder : TestDataBuilder<CompanyEntity, CompanyEntity
         return this;
     }
 
-    public CompanyEntityBuilder WithEmployee(EmployeeEntity employee)
+    public override CompanyEntityBuilder But()
     {
-        _employees.Add(employee);
+        ButHasBeenFlaged = true;
         return this;
     }
 
-    public override CompanyEntityBuilder But() => this;
-
     public override CompanyEntity Build()
     {
-        return new Faker<CompanyEntity>(Locale)
+        return new Faker<CompanyEntity>(Locale.ToString())
             .CustomInstantiator(f =>
                 new CompanyEntity(_corporateName, _fancyName, _fiscalCodeNumber))
             .RuleFor(c => c.Code, f => Guid.NewGuid())
@@ -96,7 +153,7 @@ public class CompanyEntityBuilder : TestDataBuilder<CompanyEntity, CompanyEntity
 
     public override IEnumerable<CompanyEntity> Build(int num)
     {
-        return new Faker<CompanyEntity>(Locale)
+        return new Faker<CompanyEntity>(Locale.ToString())
             .CustomInstantiator(f =>
                 new CompanyEntity(GenCorporateName(f), GenFancyName(f), GenFiscalCode(f)))
             .RuleFor(c => c.Code, f => Guid.NewGuid())
@@ -106,8 +163,30 @@ public class CompanyEntityBuilder : TestDataBuilder<CompanyEntity, CompanyEntity
 
         string GenCorporateName(Faker f) => string.IsNullOrEmpty(_corporateName) ? _corporateName : f.Company.CompanyName();
         string GenFancyName(Faker f) => string.IsNullOrEmpty(_fancyName) ? _fancyName : f.Company.CompanyName();
-        string GenFiscalCode(Faker f) => string.IsNullOrEmpty(_fiscalCodeNumber) ? _fiscalCodeNumber : f.Company.Cnpj();
-        DateTime? GenLastUpdate(Faker f) => _lastUpdate is not null ? _lastUpdate : f.Date.Soon();
+        DateTime? GenLastUpdate(Faker f) => _lastUpdate is not null ? _lastUpdate : f.Date.Past();
+
+        string GenFiscalCode(Faker f)
+        {
+            if (string.IsNullOrEmpty(_fiscalCodeNumber) || _uniqueFiscalCode)
+                return _fiscalCodeNumber;
+
+            return _countryOfPerson switch
+            {
+                CountryOfPerson.BRAZIL => f.Company.Cnpj(),
+                CountryOfPerson.ITALY => f.Company.ItalianIVA(),
+                _ => throw new InvalidOperationException($"{nameof(_countryOfPerson)} not defined")
+            };
+        }
     }
 
+    public override CompanyEntityBuilder And() => this;
+
+
 }
+
+enum CountryOfPerson
+{
+    BRAZIL,
+    ITALY,
+    OTHER
+};

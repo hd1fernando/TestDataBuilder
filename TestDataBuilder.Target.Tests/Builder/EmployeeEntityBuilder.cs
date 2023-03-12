@@ -1,5 +1,4 @@
-﻿using Bogus;
-using Bogus.Extensions.Brazil;
+﻿using Bogus.Extensions.Brazil;
 using Bogus.Extensions.Italy;
 using TestDataBuilder.Target.Entities;
 
@@ -21,7 +20,7 @@ public class EmployeeEntityBuilder : TestDataBuilder<EmployeeEntity, EmployeeEnt
 
     #endregion
 
-    public EmployeeEntityBuilder(string locale) : base(locale) { }
+    public EmployeeEntityBuilder(AbstractBogusLocale locale) : base(locale) { }
 
     public EmployeeEntityBuilder WithRandomName()
     {
@@ -32,12 +31,14 @@ public class EmployeeEntityBuilder : TestDataBuilder<EmployeeEntity, EmployeeEnt
     public EmployeeEntityBuilder WithRandomBrazilianFiscalCode()
     {
         _fiscalCode = Faker.Person.Cpf();
+        _countryOfPerson = CountryOfPerson.BRAZIL;
         return this;
     }
 
     public EmployeeEntityBuilder WithRandomItalianFiscalCode()
     {
         _fiscalCode = Faker.Person.CodiceFiscale();
+        _countryOfPerson = CountryOfPerson.ITALY;
         return this;
     }
 
@@ -47,9 +48,37 @@ public class EmployeeEntityBuilder : TestDataBuilder<EmployeeEntity, EmployeeEnt
         return this;
     }
 
+    public EmployeeEntityBuilder WithAllRandom()
+    {
+        _name = Faker.Person.FullName;
+        _fiscalCode = GenNumber();
+        return this;
+
+        string GenNumber()
+        {
+            switch (Locale)
+            {
+                case BrazilianBogusLocale:
+                    _countryOfPerson = CountryOfPerson.BRAZIL;
+                    return Faker.Person.Cpf();
+                case ItalianBogusLocale:
+                    _countryOfPerson = CountryOfPerson.ITALY;
+                    return Faker.Person.CodiceFiscale();
+                default:
+                    throw new NotImplementedException("Plase, add a new type of locale here.");
+            }
+        }
+    }
+
+    public EmployeeEntityBuilder WithName(string name)
+    {
+        _name = name;
+        return this;
+    }
+
     public override EmployeeEntity Build()
     {
-        return new Faker<EmployeeEntity>(Locale)
+        return new Faker<EmployeeEntity>(Locale.LocaleValue())
             .RuleFor(c => c.Code, f => Guid.NewGuid())
             .RuleFor(c => c.Name, _name)
             .RuleFor(c => c.FiscalCode, _fiscalCode)
@@ -58,11 +87,14 @@ public class EmployeeEntityBuilder : TestDataBuilder<EmployeeEntity, EmployeeEnt
 
     public override IEnumerable<EmployeeEntity> Build(int num)
     {
-        return new Faker<EmployeeEntity>(Locale)
+        return new Faker<EmployeeEntity>(Locale.LocaleValue())
             .RuleFor(c => c.Code, f => Guid.NewGuid())
-            .RuleFor(c => c.Name, _name)
+            .RuleFor(c => c.Name, f => GenName(f))
             .RuleFor(c => c.FiscalCode, f => GenFiscalCode(f))
             .Generate(num);
+
+        string GenName(Faker f) => string.IsNullOrEmpty(_name) ? _name : f.Company.CompanyName();
+
 
         string GenFiscalCode(Faker f)
         {
@@ -79,12 +111,11 @@ public class EmployeeEntityBuilder : TestDataBuilder<EmployeeEntity, EmployeeEnt
 
     }
 
-    public override EmployeeEntityBuilder But() => this;
-
-    enum CountryOfPerson
+    public override EmployeeEntityBuilder But()
     {
-        BRAZIL,
-        ITALY,
-        OTHER
-    };
+        ButHasBeenFlaged = true;
+        return this;
+    }
+
+    public override EmployeeEntityBuilder And() => this;
 }

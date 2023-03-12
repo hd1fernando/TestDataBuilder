@@ -1,59 +1,83 @@
-﻿using Bogus.DataSets;
-using TestDataBuilder.Target.Entities;
-using TestDataBuilder.Target.Tests.Builder;
-using Xunit;
+﻿using TestDataBuilder.Target.Tests.Builder;
+
 
 namespace TestDataBuilder.Target.Tests.Entities;
 
-public class BogusLocale
-{
-    public const string PT_BR = "pt_BR";
-    public const string IT = "it";
-}
-
 public class CompanyEntityTest
 {
-    private CompanyEntityBuilder _companyBuilder;
 
-    public CompanyEntityTest()
-    {
-        _companyBuilder = new CompanyEntityBuilder(BogusLocale.PT_BR)
+    private CompanyEntityBuilder AnBrazilianCompanyWithNameAndFancyName()
+        => new CompanyEntityBuilder(BogusLocale.PT_BR)
             .WithRandomCorportateName()
             .WithRandomFancyName();
-    }
+
+    private CompanyEntityBuilder AnBrazilianCompany()
+        => new CompanyEntityBuilder(BogusLocale.PT_BR)
+            .WithAllRandom();
+
+
+    private EmployeeEntityBuilder AnItalianEmployee()
+        => new(BogusLocale.IT);
 
     [Fact]
     public void Test()
     {
 
-        var company = _companyBuilder.Build();
+        var company = AnBrazilianCompanyWithNameAndFancyName().Build();
     }
 
     [Fact]
     public void Test2()
     {
-        var company = _companyBuilder
+        var company = AnBrazilianCompanyWithNameAndFancyName()
             .But()
             .WithRandomBrazilianFiscalCodeNumber()
             .WithEmployees(_ => _
                 .WithRandomName()
                 .WithRandomBrazilianFiscalCode()
                 )
+            .And().WithRandonLastUpdate()
             .Build();
     }
 
     [Fact]
     public void Test3()
     {
-        var company = new CompanyEntityBuilder(BogusLocale.IT)
+        var company = AnBrazilianCompany()
+            .But()
             .WithRandomCorportateName()
             .WithFancyName("Microsoft LTDA")
-            .WithEmployee(
-                new EmployeeEntityBuilder(BogusLocale.IT)
+            .WithRandonLastUpdate()
+            .And()
+            .WithRandomBrazilianFiscalCodeNumber()
+            .WithUniqueFiscalCodes()
+            .WithEmployees
+            (_ => _
                     .WithRandomName()
                     .WithRandomItalianFiscalCode()
                     .Build()
             ).Build(5);
 
+    }
+
+    [Fact]
+    public void Test4()
+    {
+        var company = AnBrazilianCompany()
+            .But()
+            .With(AnItalianEmployee()
+                .WithRandomName()
+                .WithRandomItalianFiscalCode()
+                )
+            .And().With(AnItalianEmployee()
+                .WithName("Pietro"))
+            .Build();
+
+    }
+
+    [Fact]
+    public void Test5()
+    {
+        var company = AnBrazilianCompany().Build();
     }
 }
