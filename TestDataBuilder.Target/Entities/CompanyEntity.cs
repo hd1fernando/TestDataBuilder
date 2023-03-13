@@ -16,7 +16,7 @@ public sealed class CompanyEntity : Entity<Guid>
     public DateTime? LastUpdate { get; private set; }
     public List<EmployeeEntity> Employees { get; private set; }
 
-    public void AddEmployee(EmployeeEntity employee)  
+    public void AddEmployee(EmployeeEntity employee)
     {
         Employees.Add(employee);
     }

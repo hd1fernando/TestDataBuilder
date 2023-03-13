@@ -3,6 +3,28 @@
 
 namespace TestDataBuilder.Target.Tests.Entities;
 
+public class OrderEntityTest
+{
+    private OrderEntityBuilder AnOrder()
+        => new OrderEntityBuilder(BogusLocale.EN);
+
+    private CustomerEntityBuilder AnCustomer()
+        => new(BogusLocale.EN);
+
+
+    [Fact]
+    public void Test1()
+    {
+        var theCustomer = AnCustomer().Build();
+
+        var order = AnOrder()
+            .From(theCustomer)
+            .Build();   
+    }
+
+}
+
+
 public class CompanyEntityTest
 {
 
